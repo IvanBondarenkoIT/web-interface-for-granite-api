@@ -44,7 +44,7 @@ class Settings:
             proxy_api_url=os.getenv("PROXY_API_URL", "http://85.114.224.45:8000"),
             proxy_primary_token=_require_env("PROXY_PRIMARY_TOKEN"),
             proxy_fallback_token=os.getenv("PROXY_FALLBACK_TOKEN"),
-            proxy_timeout=int(os.getenv("PROXY_TIMEOUT", "10")),
+            proxy_timeout=int(os.getenv("PROXY_TIMEOUT", "5")),
             allowed_origins=_split_csv(os.getenv("ALLOWED_ORIGINS", "*"), default=["*"]),
             rate_limit_per_minute=int(os.getenv("RATE_LIMIT_PER_MINUTE", "60")),
             rate_limit_per_hour=int(os.getenv("RATE_LIMIT_PER_HOUR", "1000")),

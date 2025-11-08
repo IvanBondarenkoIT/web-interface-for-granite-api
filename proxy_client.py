@@ -156,7 +156,7 @@ ORDER BY stgp.NAME, D.DAT_
                     headers=self._headers(token),
                     json=json,
                     params=params,
-                    timeout=self.timeout,
+                    timeout=(self.timeout, self.timeout),
                 )
             except requests.RequestException as exc:
                 last_exception = ProxyAPIError(f"Proxy API request failed: {exc}")  # type: ignore[assignment]
