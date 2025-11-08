@@ -7,7 +7,12 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 
 from config import settings
 from proxy_client import ProxyAPIClient, ProxyAPIError
-from services.analytics import merge_sales_with_packages, sort_records, summarize_sales
+from services.analytics import (
+    build_pivot_table,
+    merge_sales_with_packages,
+    sort_records,
+    summarize_sales,
+)
 
 
 def create_app() -> Flask:
@@ -66,6 +71,7 @@ def create_app() -> Flask:
 
         stores: List[Dict[str, Any]] = []
         sorted_records = []
+        pivot_table = None
 
         if load_requested:
             try:
@@ -74,6 +80,10 @@ def create_app() -> Flask:
                 raw_sales = client.get_sales(store_ids, start_date, end_date)
                 merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
                 sorted_records = sort_records(merged, sort_key)
+                pivot_table = build_pivot_table(
+                    sorted_records,
+                    store_order=[store["NAME"] for store in stores],
+                )
             except ProxyAPIError as exc:
                 flash(f"Ошибка при запросе продаж: {exc}", "danger")
         else:
@@ -97,6 +107,7 @@ def create_app() -> Flask:
                 "sort": sort_key,
             },
             loaded=load_requested,
+            pivot=pivot_table,
         )
 
     @app.errorhandler(404)

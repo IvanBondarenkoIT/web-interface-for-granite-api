@@ -24,3 +24,27 @@ body {
   font-weight: 600;
 }
 
+.pivot-table th,
+.pivot-table td {
+  vertical-align: middle;
+}
+
+.pivot-cell {
+  min-width: 180px;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  font-size: 0.9rem;
+}
+
+.pivot-cell .pivot-label {
+  font-weight: 600;
+  margin-right: 0.35rem;
+  color: #495057;
+}
+
+.pivot-cell > div + div {
+  margin-top: 0.25rem;
+}
+

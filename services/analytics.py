@@ -25,6 +25,16 @@ class SalesRecord:
         }
 
 
+@dataclass
+class PivotTable:
+    dates: List[date]
+    stores: List[str]
+    data: Dict[date, Dict[str, SalesRecord]]
+
+    def formatted_dates(self) -> List[str]:
+        return [d.isoformat() for d in self.dates]
+
+
 def merge_sales_with_packages(
     sales_rows: Sequence[Dict[str, Any]],
     packages_rows: Sequence[Dict[str, Any]],
@@ -128,4 +138,34 @@ def normalize_date(value: Any) -> Optional[date]:
         return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
     except ValueError:
         return None
+
+
+def build_pivot_table(
+    records: Sequence[SalesRecord],
+    store_order: Optional[Sequence[str]] = None,
+) -> PivotTable:
+    unique_dates = sorted({record.order_date for record in records})
+    store_set = {record.store_name for record in records}
+
+    ordered_stores: List[str]
+    if store_order:
+        seen = set()
+        ordered_stores = []
+        for name in store_order:
+            if name in store_set and name not in seen:
+                ordered_stores.append(name)
+                seen.add(name)
+        for remainder in sorted(store_set):
+            if remainder not in seen:
+                ordered_stores.append(remainder)
+    else:
+        ordered_stores = sorted(store_set)
+
+    table_data: Dict[date, Dict[str, SalesRecord]] = {
+        day: {} for day in unique_dates
+    }
+    for record in records:
+        table_data.setdefault(record.order_date, {})[record.store_name] = record
+
+    return PivotTable(dates=unique_dates, stores=ordered_stores, data=table_data)
 

@@ -80,36 +80,47 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Магазин</th>
-              <th>Дата</th>
-              <th class="text-end">Чашек</th>
-              <th class="text-end">Выручка, ₾</th>
-              <th class="text-end">Упаковок, кг</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for record in records %}
+    {% if pivot and pivot.dates %}
+      <div class="card shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover mb-0 align-middle pivot-table">
+            <thead class="table-light">
               <tr>
-                <td>{{ record.store_name }}</td>
-                <td>{{ record.order_date.isoformat() }}</td>
-                <td class="text-end">{{ record.cups }}</td>
-                <td class="text-end">{{ '{:,.2f}'.format(record.total_cash).replace(',', ' ') }}</td>
-                <td class="text-end">{{ '{:,.2f}'.format(record.packages_kg).replace(',', ' ') }}</td>
+                <th class="align-middle">Дата</th>
+                {% for store_name in pivot.stores %}
+                  <th class="text-center align-middle">{{ store_name }}</th>
+                {% endfor %}
               </tr>
-            {% else %}
-              <tr>
-                <td colspan="5" class="text-center text-muted py-4">Данные отсутствуют. Уточните фильтры.</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for current_date in pivot.dates %}
+                <tr>
+                  <th class="align-middle">{{ current_date.isoformat() }}</th>
+                  {% for store_name in pivot.stores %}
+                    {% set cell = pivot.data.get(current_date, {}).get(store_name) %}
+                    <td class="pivot-cell">
+                      {% if cell %}
+                        <div><span class="pivot-label">Чашки:</span> {{ cell.cups }}</div>
+                        <div><span class="pivot-label">Кг:</span> {{ '{:,.2f}'.format(cell.packages_kg).replace(',', ' ') }}</div>
+                        <div><span class="pivot-label">₾:</span> {{ '{:,.2f}'.format(cell.total_cash).replace(',', ' ') }}</div>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    {% else %}
+      <div class="card shadow-sm">
+        <div class="card-body text-center text-muted py-5">
+          Данные по выбранным фильтрам отсутствуют.
+        </div>
+      </div>
+    {% endif %}
   {% else %}
     <div class="card shadow-sm">
       <div class="card-body text-center py-5">

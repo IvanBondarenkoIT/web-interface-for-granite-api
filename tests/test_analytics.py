@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from services.analytics import (
     SalesRecord,
+    build_pivot_table,
     merge_sales_with_packages,
     normalize_date,
     summarize_sales,
@@ -44,4 +45,20 @@ def test_summarize_sales_returns_totals():
 def test_normalize_date_understands_isoformat_with_time():
     normalized = normalize_date("2024-01-05T10:30:00")
     assert normalized == date(2024, 1, 5)
+
+
+def test_build_pivot_table_orders_by_store_list():
+    records = [
+        SalesRecord("Store B", date(2024, 1, 1), cups=5, total_cash=Decimal("12"), packages_kg=Decimal("0.5")),
+        SalesRecord("Store A", date(2024, 1, 1), cups=3, total_cash=Decimal("8"), packages_kg=Decimal("0.2")),
+        SalesRecord("Store A", date(2024, 1, 2), cups=7, total_cash=Decimal("15"), packages_kg=Decimal("0.4")),
+    ]
+
+    pivot = build_pivot_table(records, store_order=["Store A", "Store C", "Store B"])
+
+    assert pivot.stores == ["Store A", "Store B"]
+    assert pivot.formatted_dates() == ["2024-01-01", "2024-01-02"]
+    assert pivot.data[date(2024, 1, 1)]["Store A"].cups == 3
+    assert pivot.data[date(2024, 1, 1)]["Store B"].cups == 5
+    assert "Store B" not in pivot.data[date(2024, 1, 2)]
 
