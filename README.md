@@ -24,6 +24,12 @@ flask --app app run --debug
 pytest
 ```
 
+## Data Loading Mode
+
+- Интерфейс загружается без обращений к Proxy API.
+- Нажмите «Загрузить данные» на главной странице или в разделе продаж, чтобы инициировать запросы.
+- После первой загрузки можно менять фильтры; параметр `load=1` останется в запросе.
+
 ## Railway Deployment
 
 1. Push this repository to GitHub (already configured).

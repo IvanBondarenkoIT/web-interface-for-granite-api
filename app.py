@@ -19,19 +19,23 @@ def create_app() -> Flask:
     @app.route("/")
     def dashboard() -> str:
         default_start, default_end = _default_range()
+        load_requested = request.args.get("load") == "1"
 
-        try:
-            stores = client.get_stores()
-            store_ids = [store["ID"] for store in stores]
-            api_health = client.health()
+        stores: List[Dict[str, Any]] = []
+        merged = []
+        api_health: Dict[str, Any] = {"status": "not loaded"}
 
-            raw_sales = client.get_sales(store_ids, default_start, default_end)
-            merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
-        except ProxyAPIError as exc:
-            flash(f"Не удалось получить данные от Proxy API: {exc}", category="danger")
-            stores = []
-            merged = []
-            api_health = {"status": "error", "message": str(exc)}
+        if load_requested:
+            try:
+                stores = client.get_stores()
+                store_ids = [store["ID"] for store in stores]
+                api_health = client.health()
+
+                raw_sales = client.get_sales(store_ids, default_start, default_end)
+                merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
+            except ProxyAPIError as exc:
+                flash(f"Не удалось получить данные от Proxy API: {exc}", category="danger")
+                api_health = {"status": "error", "message": str(exc)}
 
         summary = summarize_sales(merged)
         preview = merged[:10]
@@ -48,6 +52,7 @@ def create_app() -> Flask:
                 "sort": "date",
             },
             health=api_health,
+            loaded=load_requested,
         )
 
     @app.route("/sales")
@@ -57,17 +62,26 @@ def create_app() -> Flask:
         end_date = request.args.get("end_date") or default_end
         sort_key = request.args.get("sort", "date")
         selected_store_ids = _parse_store_ids(request.args.getlist("store"))
+        load_requested = request.args.get("load") == "1"
 
-        try:
-            stores = client.get_stores()
-            store_ids = selected_store_ids or [store["ID"] for store in stores]
-            raw_sales = client.get_sales(store_ids, start_date, end_date)
-            merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
-            sorted_records = sort_records(merged, sort_key)
-        except ProxyAPIError as exc:
-            flash(f"Ошибка при запросе продаж: {exc}", "danger")
-            stores = []
-            sorted_records = []
+        stores: List[Dict[str, Any]] = []
+        sorted_records = []
+
+        if load_requested:
+            try:
+                stores = client.get_stores()
+                store_ids = selected_store_ids or [store["ID"] for store in stores]
+                raw_sales = client.get_sales(store_ids, start_date, end_date)
+                merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
+                sorted_records = sort_records(merged, sort_key)
+            except ProxyAPIError as exc:
+                flash(f"Ошибка при запросе продаж: {exc}", "danger")
+        else:
+            # Attempt to load store list separately; ignore failures to keep page responsive
+            try:
+                stores = client.get_stores()
+            except ProxyAPIError:
+                stores = []
 
         summary = summarize_sales(sorted_records)
 
@@ -82,6 +96,7 @@ def create_app() -> Flask:
                 "store_ids": selected_store_ids,
                 "sort": sort_key,
             },
+            loaded=load_requested,
         )
 
     @app.errorhandler(404)
