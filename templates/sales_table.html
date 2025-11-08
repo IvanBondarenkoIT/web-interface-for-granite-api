@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <form class="row g-3 align-items-end" method="get" action="{{ url_for('sales') }}">
+        <div class="col-12 col-md-3">
+          <label for="start_date" class="form-label">Дата начала</label>
+          <input type="date" class="form-control" id="start_date" name="start_date" value="{{ filters.start_date }}">
+        </div>
+        <div class="col-12 col-md-3">
+          <label for="end_date" class="form-label">Дата окончания</label>
+          <input type="date" class="form-control" id="end_date" name="end_date" value="{{ filters.end_date }}">
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="store" class="form-label">Магазин</label>
+          <select class="form-select" id="store" name="store">
+            <option value="">Все магазины</option>
+            {% for store in stores %}
+              <option value="{{ store.ID }}" {% if store.ID in filters.store_ids %}selected{% endif %}>{{ store.NAME }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <label for="sort" class="form-label">Сортировка</label>
+          <select class="form-select" id="sort" name="sort">
+            <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>По дате</option>
+            <option value="store" {% if filters.sort == 'store' %}selected{% endif %}>По магазину</option>
+            <option value="sum" {% if filters.sort == 'sum' %}selected{% endif %}>По выручке</option>
+            <option value="cups" {% if filters.sort == 'cups' %}selected{% endif %}>По чашкам</option>
+            <option value="packages" {% if filters.sort == 'packages' %}selected{% endif %}>По упаковкам</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Обновить</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('sales') }}">Сбросить</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row mb-4 g-3">
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <span class="metric-label">Магазины</span>
+        <span class="metric-value">{{ summary.stores_count or 0 }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <span class="metric-label">Чашки</span>
+        <span class="metric-value">{{ '{:,}'.format(summary.total_cups or 0).replace(',', ' ') }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <span class="metric-label">Выручка, ₾</span>
+        <span class="metric-value">{{ '{:,.2f}'.format(summary.total_cash or 0).replace(',', ' ') }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <span class="metric-label">Упаковки, кг</span>
+        <span class="metric-value">{{ '{:,.2f}'.format(summary.total_packages or 0).replace(',', ' ') }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Магазин</th>
+            <th>Дата</th>
+            <th class="text-end">Чашек</th>
+            <th class="text-end">Выручка, ₾</th>
+            <th class="text-end">Упаковок, кг</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+            <tr>
+              <td>{{ record.store_name }}</td>
+              <td>{{ record.order_date.isoformat() }}</td>
+              <td class="text-end">{{ record.cups }}</td>
+              <td class="text-end">{{ '{:,.2f}'.format(record.total_cash).replace(',', ' ') }}</td>
+              <td class="text-end">{{ '{:,.2f}'.format(record.packages_kg).replace(',', ' ') }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">Данные отсутствуют. Уточните фильтры.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+
