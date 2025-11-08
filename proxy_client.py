@@ -79,10 +79,13 @@ ORDER BY stgp.NAME, D.DAT_
 
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=3,
-            backoff_factor=0.5,
+            total=1,
+            connect=1,
+            read=1,
+            backoff_factor=0.3,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["GET", "POST"],
+            raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
