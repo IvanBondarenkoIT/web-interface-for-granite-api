@@ -24,13 +24,17 @@ flask --app app run --debug
 pytest
 ```
 
-## Deployment
+## Railway Deployment
 
-Build the Docker image:
+1. Push this repository to GitHub (already configured).
+2. On Railway, create a new service from this repository and select the Dockerfile build strategy.
+3. Define the required environment variables (`SECRET_KEY`, `PROXY_PRIMARY_TOKEN`, `PROXY_FALLBACK_TOKEN`, etc.).
+4. Deploy; Railway will expose port `8000` automatically.
+
+### Local Docker build
 
 ```bash
 docker build -t flask-proxy-dashboard .
+docker run -p 8000:8000 --env-file .env flask-proxy-dashboard
 ```
-
-The resulting container listens on port `8000`; ideal for Railway deployment.
 
