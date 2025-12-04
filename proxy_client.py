@@ -22,22 +22,61 @@ class ProxyAPIAuthError(ProxyAPIError):
 
 
 class ProxyAPIClient:
+    # ID групп для чашек
+    MONO_CUP_GROUPS = ["24435", "25539", "21671", "25546", "25775", "25777", "25789"]
+    BLEND_CUP_GROUPS = ["23076", "21882", "25767", "248882", "25788"]
+    CAOTINA_CUP_GROUPS = ["24491", "21385"]
+    ALL_CUP_GROUPS = MONO_CUP_GROUPS + BLEND_CUP_GROUPS + CAOTINA_CUP_GROUPS
+
+    # ID групп для килограммов (БЕЗ Caotina!)
+    PACKAGES_KG_GROUPS = ["11077", "16279", "16276"]  # Blend (2) + Mono (1)
+
     STORES_QUERY = "SELECT ID, NAME FROM STORGRP ORDER BY NAME"
-    SALES_QUERY_TEMPLATE = """
+
+    # Запрос 1: Чашки (с JOIN для подсчета товаров по типам)
+    CUPS_QUERY_TEMPLATE = """
 SELECT 
     stgp.NAME AS STORE_NAME,
     D.DAT_ AS ORDER_DATE,
-    COUNT(*) AS ALLCUP,
+    SUM(CASE WHEN G.OWNER IN ({mono_placeholders}) THEN GD.Source ELSE NULL END) AS MonoCup,
+    SUM(CASE WHEN G.OWNER IN ({blend_placeholders}) THEN GD.Source ELSE NULL END) AS BlendCup,
+    SUM(CASE WHEN G.OWNER IN ({caotina_placeholders}) THEN GD.Source ELSE NULL END) AS CaotinaCup,
+    SUM(CASE WHEN G.OWNER IN ({all_placeholders}) THEN GD.Source ELSE NULL END) AS AllCup
+FROM STORZAKAZDT D
+JOIN STORZDTGDS GD ON D.ID = GD.SZID
+JOIN GOODS G ON GD.GODSId = G.ID
+JOIN STORGRP stgp ON D.STORGRPID = stgp.ID
+WHERE D.STORGRPID IN ({store_placeholders})
+  AND D.CSDTKTHBID IN ('1', '2', '3', '5')
+  AND D.DAT_ >= ? AND D.DAT_ <= ?
+  AND NOT (
+      D.comment LIKE '%мы;%' OR
+      D.comment LIKE '%Мы;%' OR
+      D.comment LIKE '%Тестирование%')
+GROUP BY stgp.NAME, D.DAT_
+ORDER BY stgp.NAME, D.DAT_
+""".strip()
+
+    # Запрос 2: Суммы (БЕЗ JOIN - чтобы избежать дублирования)
+    SUMS_QUERY_TEMPLATE = """
+SELECT
+    stgp.NAME AS STORE_NAME,
+    D.DAT_ AS ORDER_DATE,
     SUM(D.SUMMA) AS TOTAL_CASH
 FROM STORZAKAZDT D
 JOIN STORGRP stgp ON D.STORGRPID = stgp.ID
 WHERE D.STORGRPID IN ({store_placeholders})
   AND D.CSDTKTHBID IN ('1', '2', '3', '5')
   AND D.DAT_ >= ? AND D.DAT_ <= ?
+  AND NOT (
+      D.comment LIKE '%мы;%' OR
+      D.comment LIKE '%Мы;%' OR
+      D.comment LIKE '%Тестирование%')
 GROUP BY stgp.NAME, D.DAT_
 ORDER BY stgp.NAME, D.DAT_
 """.strip()
 
+    # Запрос 3: Килограммы (с фильтром по ID групп, БЕЗ Caotina, БЕЗ фильтра по комментариям)
     PACKAGES_QUERY_TEMPLATE = """
 SELECT
     stgp.NAME AS STORE_NAME,
@@ -47,25 +86,10 @@ FROM STORZAKAZDT D
 JOIN STORZDTGDS GD ON D.ID = GD.SZID
 JOIN GOODS G ON GD.GODSId = G.ID
 JOIN STORGRP stgp ON D.STORGRPID = stgp.ID
-LEFT JOIN GOODSGROUPS GG ON G.OWNER = GG.ID
 WHERE D.STORGRPID IN ({store_placeholders})
   AND D.CSDTKTHBID IN ('1', '2', '3', '5')
   AND D.DAT_ >= ? AND D.DAT_ <= ?
-  AND (
-        (
-            (G.NAME LIKE '%250 g%' OR G.NAME LIKE '%250г%' OR
-             G.NAME LIKE '%500 g%' OR G.NAME LIKE '%500г%' OR
-             G.NAME LIKE '%1 kg%' OR G.NAME LIKE '%1кг%' OR
-             G.NAME LIKE '%200 g%' OR G.NAME LIKE '%200г%' OR
-             G.NAME LIKE '%125 g%' OR G.NAME LIKE '%125г%' OR
-             G.NAME LIKE '%80 g%' OR G.NAME LIKE '%80г%' OR
-             G.NAME LIKE '%0.25%' OR G.NAME LIKE '%0.5%' OR
-             G.NAME LIKE '%0.2%' OR G.NAME LIKE '%0.125%' OR
-             G.NAME LIKE '%0.08%')
-            AND (G.NAME LIKE '%Coffee%' OR G.NAME LIKE '%кофе%' OR G.NAME LIKE '%Кофе%' OR G.NAME LIKE '%Blaser%')
-        )
-        OR (GG.NAME LIKE '%Caotina swiss chocolate drink (package)%')
-      )
+  AND G.OWNER IN ({packages_placeholders})
 GROUP BY stgp.NAME, D.DAT_
 ORDER BY stgp.NAME, D.DAT_
 """.strip()
@@ -109,20 +133,50 @@ ORDER BY stgp.NAME, D.DAT_
         if not store_ids:
             raise ValueError("At least one store id must be provided for sales query.")
 
-        placeholders = ", ".join(["?"] * len(store_ids))
-        params: List[Any] = list(store_ids) + [start_date, end_date]
+        # Формирование placeholders для магазинов
+        store_placeholders = ", ".join(["?"] * len(store_ids))
 
-        sales_rows = self.execute_query(
-            self.SALES_QUERY_TEMPLATE.format(store_placeholders=placeholders),
-            params=params,
+        # Запрос 1: Чашки
+        mono_placeholders = ", ".join(["?"] * len(self.MONO_CUP_GROUPS))
+        blend_placeholders = ", ".join(["?"] * len(self.BLEND_CUP_GROUPS))
+        caotina_placeholders = ", ".join(["?"] * len(self.CAOTINA_CUP_GROUPS))
+        all_placeholders = ", ".join(["?"] * len(self.ALL_CUP_GROUPS))
+
+        cups_query = self.CUPS_QUERY_TEMPLATE.format(
+            mono_placeholders=mono_placeholders,
+            blend_placeholders=blend_placeholders,
+            caotina_placeholders=caotina_placeholders,
+            all_placeholders=all_placeholders,
+            store_placeholders=store_placeholders,
         )
-        package_rows = self.execute_query(
-            self.PACKAGES_QUERY_TEMPLATE.format(store_placeholders=placeholders),
-            params=params,
+        cups_params: List[Any] = (
+            list(self.MONO_CUP_GROUPS)
+            + list(self.BLEND_CUP_GROUPS)
+            + list(self.CAOTINA_CUP_GROUPS)
+            + list(self.ALL_CUP_GROUPS)
+            + list(store_ids)
+            + [start_date, end_date]
         )
+        cups_rows = self.execute_query(cups_query, params=cups_params)
+
+        # Запрос 2: Суммы
+        sums_query = self.SUMS_QUERY_TEMPLATE.format(store_placeholders=store_placeholders)
+        sums_params: List[Any] = list(store_ids) + [start_date, end_date]
+        sums_rows = self.execute_query(sums_query, params=sums_params)
+
+        # Запрос 3: Килограммы
+        packages_placeholders = ", ".join(["?"] * len(self.PACKAGES_KG_GROUPS))
+        packages_query = self.PACKAGES_QUERY_TEMPLATE.format(
+            store_placeholders=store_placeholders,
+            packages_placeholders=packages_placeholders,
+        )
+        packages_params: List[Any] = list(store_ids) + [start_date, end_date] + list(self.PACKAGES_KG_GROUPS)
+        packages_rows = self.execute_query(packages_query, params=packages_params)
+
         return {
-            "sales": sales_rows,
-            "packages": package_rows,
+            "cups": cups_rows,
+            "sums": sums_rows,
+            "packages": packages_rows,
         }
 
     def execute_query(self, query: str, params: Optional[Iterable[Any]] = None) -> List[Dict[str, Any]]:

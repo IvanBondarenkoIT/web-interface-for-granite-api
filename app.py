@@ -9,6 +9,7 @@ from config import settings
 from proxy_client import ProxyAPIClient, ProxyAPIError
 from services.analytics import (
     build_pivot_table,
+    merge_cups_sums_packages,
     merge_sales_with_packages,
     sort_records,
     summarize_sales,
@@ -36,8 +37,12 @@ def create_app() -> Flask:
                 store_ids = [store["ID"] for store in stores]
                 api_health = client.health()
 
-                raw_sales = client.get_sales(store_ids, default_start, default_end)
-                merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
+                raw_data = client.get_sales(store_ids, default_start, default_end)
+                merged = merge_cups_sums_packages(
+                    raw_data["cups"],
+                    raw_data["sums"],
+                    raw_data["packages"],
+                )
             except ProxyAPIError as exc:
                 flash(f"Не удалось получить данные от Proxy API: {exc}", category="danger")
                 api_health = {"status": "error", "message": str(exc)}
@@ -77,8 +82,12 @@ def create_app() -> Flask:
             try:
                 stores = client.get_stores()
                 store_ids = selected_store_ids or [store["ID"] for store in stores]
-                raw_sales = client.get_sales(store_ids, start_date, end_date)
-                merged = merge_sales_with_packages(raw_sales["sales"], raw_sales["packages"])
+                raw_data = client.get_sales(store_ids, start_date, end_date)
+                merged = merge_cups_sums_packages(
+                    raw_data["cups"],
+                    raw_data["sums"],
+                    raw_data["packages"],
+                )
                 sorted_records = sort_records(merged, sort_key)
                 pivot_table = build_pivot_table(
                     sorted_records,

@@ -100,9 +100,17 @@
                     {% set cell = pivot.data.get(current_date, {}).get(store_name) %}
                     <td class="pivot-cell">
                       {% if cell %}
-                        <div><span class="pivot-label">Чашки:</span> {{ cell.cups }}</div>
-                        <div><span class="pivot-label">Кг:</span> {{ '{:,.2f}'.format(cell.packages_kg).replace(',', ' ') }}</div>
-                        <div><span class="pivot-label">₾:</span> {{ '{:,.2f}'.format(cell.total_cash).replace(',', ' ') }}</div>
+                        {% if cell.all_cup > 0 or cell.mono_cup > 0 or cell.blend_cup > 0 or cell.caotina_cup > 0 %}
+                          {% if cell.caotina_cup > 0 %}<div><span class="pivot-label">CCup:</span> {{ cell.caotina_cup }}</div>{% endif %}
+                          {% if cell.mono_cup > 0 %}<div><span class="pivot-label">MCup:</span> {{ cell.mono_cup }}</div>{% endif %}
+                          {% if cell.blend_cup > 0 %}<div><span class="pivot-label">BCup:</span> {{ cell.blend_cup }}</div>{% endif %}
+                          {% set total_cups_display = cell.all_cup if cell.all_cup > 0 else (cell.mono_cup + cell.blend_cup + cell.caotina_cup) %}
+                          {% if total_cups_display > 0 %}<div><span class="pivot-label">📊:</span> {{ total_cups_display }}</div>{% endif %}
+                        {% else %}
+                          <div><span class="pivot-label">Чашки:</span> {{ cell.cups }}</div>
+                        {% endif %}
+                        {% if cell.packages_kg > 0 %}<div><span class="pivot-label">📦</span> {{ '{:,.2f}'.format(cell.packages_kg).replace(',', ' ') }}кг</div>{% endif %}
+                        <div><span class="pivot-label">💰</span> {{ '{:,.2f}'.format(cell.total_cash).replace(',', ' ') }} лари</div>
                       {% else %}
                         <span class="text-muted">—</span>
                       {% endif %}
