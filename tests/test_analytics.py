@@ -4,6 +4,7 @@ from decimal import Decimal
 from services.analytics import (
     SalesRecord,
     build_pivot_table,
+    calculate_daily_totals,
     merge_cups_sums_packages,
     merge_sales_with_packages,
     normalize_date,
@@ -111,4 +112,55 @@ def test_merge_sales_backward_compatibility():
     assert record.all_cup == 10
     assert record.total_cash == Decimal("15.50")
     assert record.packages_kg == Decimal("2.5")
+
+
+def test_calculate_daily_totals():
+    """Test daily totals calculation"""
+    records = [
+        SalesRecord("Store A", date(2024, 1, 1), cups=10, mono_cup=4, blend_cup=5, caotina_cup=1, all_cup=10, total_cash=Decimal("20.00"), packages_kg=Decimal("1.2")),
+        SalesRecord("Store B", date(2024, 1, 1), cups=5, mono_cup=2, blend_cup=3, caotina_cup=0, all_cup=5, total_cash=Decimal("10.00"), packages_kg=Decimal("0.5")),
+        SalesRecord("Store A", date(2024, 1, 2), cups=7, mono_cup=3, blend_cup=4, caotina_cup=0, all_cup=7, total_cash=Decimal("15.00"), packages_kg=Decimal("0.8")),
+    ]
+
+    daily_totals = calculate_daily_totals(records)
+
+    assert len(daily_totals) == 2
+    assert date(2024, 1, 1) in daily_totals
+    assert date(2024, 1, 2) in daily_totals
+
+    day1_total = daily_totals[date(2024, 1, 1)]
+    assert day1_total.store_name == "Итого"
+    assert day1_total.mono_cup == 6  # 4 + 2
+    assert day1_total.blend_cup == 8  # 5 + 3
+    assert day1_total.caotina_cup == 1
+    assert day1_total.all_cup == 15  # 10 + 5
+    assert day1_total.total_cash == Decimal("30.00")  # 20 + 10
+    assert day1_total.packages_kg == Decimal("1.7")  # 1.2 + 0.5
+
+    day2_total = daily_totals[date(2024, 1, 2)]
+    assert day2_total.store_name == "Итого"
+    assert day2_total.mono_cup == 3
+    assert day2_total.blend_cup == 4
+    assert day2_total.all_cup == 7
+    assert day2_total.total_cash == Decimal("15.00")
+
+
+def test_build_pivot_table_includes_daily_totals():
+    """Test that pivot table includes daily totals"""
+    records = [
+        SalesRecord("Store A", date(2024, 1, 1), cups=10, mono_cup=4, blend_cup=5, caotina_cup=1, all_cup=10, total_cash=Decimal("20.00"), packages_kg=Decimal("1.2")),
+        SalesRecord("Store B", date(2024, 1, 1), cups=5, mono_cup=2, blend_cup=3, caotina_cup=0, all_cup=5, total_cash=Decimal("10.00"), packages_kg=Decimal("0.5")),
+    ]
+
+    pivot = build_pivot_table(records)
+
+    assert pivot.daily_totals is not None
+    assert date(2024, 1, 1) in pivot.daily_totals
+    
+    daily_total = pivot.get_daily_total(date(2024, 1, 1))
+    assert daily_total is not None
+    assert daily_total.store_name == "Итого"
+    assert daily_total.mono_cup == 6
+    assert daily_total.blend_cup == 8
+    assert daily_total.total_cash == Decimal("30.00")
 

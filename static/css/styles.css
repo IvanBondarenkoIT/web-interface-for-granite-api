@@ -48,3 +48,26 @@ body {
   margin-top: 0.25rem;
 }
 
+.cup-types-group {
+  border-left: 3px solid #0d6efd;
+  padding-left: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cup-types-group > div {
+  margin-top: 0.15rem;
+}
+
+.cup-types-group > div:first-child {
+  margin-top: 0;
+}
+
+.pivot-cell.bg-light {
+  background-color: #f8f9fa !important;
+  font-weight: 600;
+}
+
+.pivot-cell strong {
+  color: #0d6efd;
+}
+

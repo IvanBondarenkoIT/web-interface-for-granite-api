@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple
@@ -38,9 +38,16 @@ class PivotTable:
     dates: List[date]
     stores: List[str]
     data: Dict[date, Dict[str, SalesRecord]]
+    daily_totals: Optional[Dict[date, SalesRecord]] = field(default=None)
 
     def formatted_dates(self) -> List[str]:
         return [d.isoformat() for d in self.dates]
+
+    def get_daily_total(self, day: date) -> Optional[SalesRecord]:
+        """Получить итоги за день."""
+        if self.daily_totals:
+            return self.daily_totals.get(day)
+        return None
 
 
 def merge_cups_sums_packages(
@@ -218,6 +225,50 @@ def normalize_date(value: Any) -> Optional[date]:
         return None
 
 
+def calculate_daily_totals(
+    records: Sequence[SalesRecord],
+) -> Dict[date, SalesRecord]:
+    """Рассчитать итоги по всем магазинам за каждый день."""
+    daily_aggregated: Dict[date, Dict[str, Any]] = {}
+
+    for record in records:
+        day = record.order_date
+        if day not in daily_aggregated:
+            daily_aggregated[day] = {
+                "mono_cup": 0,
+                "blend_cup": 0,
+                "caotina_cup": 0,
+                "all_cup": 0,
+                "cups": 0,
+                "total_cash": Decimal("0"),
+                "packages_kg": Decimal("0"),
+            }
+
+        daily_aggregated[day]["mono_cup"] += record.mono_cup
+        daily_aggregated[day]["blend_cup"] += record.blend_cup
+        daily_aggregated[day]["caotina_cup"] += record.caotina_cup
+        daily_aggregated[day]["all_cup"] += record.all_cup if record.all_cup > 0 else record.cups
+        daily_aggregated[day]["cups"] += record.cups
+        daily_aggregated[day]["total_cash"] += record.total_cash
+        daily_aggregated[day]["packages_kg"] += record.packages_kg
+
+    daily_totals: Dict[date, SalesRecord] = {}
+    for day, agg in daily_aggregated.items():
+        daily_totals[day] = SalesRecord(
+            store_name="Итого",
+            order_date=day,
+            cups=agg["cups"],
+            mono_cup=agg["mono_cup"],
+            blend_cup=agg["blend_cup"],
+            caotina_cup=agg["caotina_cup"],
+            all_cup=agg["all_cup"] if agg["all_cup"] > 0 else agg["cups"],
+            total_cash=agg["total_cash"],
+            packages_kg=agg["packages_kg"],
+        )
+
+    return daily_totals
+
+
 def build_pivot_table(
     records: Sequence[SalesRecord],
     store_order: Optional[Sequence[str]] = None,
@@ -245,5 +296,8 @@ def build_pivot_table(
     for record in records:
         table_data.setdefault(record.order_date, {})[record.store_name] = record
 
-    return PivotTable(dates=unique_dates, stores=ordered_stores, data=table_data)
+    # Рассчитываем итоги за день
+    daily_totals = calculate_daily_totals(records)
+
+    return PivotTable(dates=unique_dates, stores=ordered_stores, data=table_data, daily_totals=daily_totals)
 

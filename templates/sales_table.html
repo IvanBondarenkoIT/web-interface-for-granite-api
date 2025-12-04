@@ -90,6 +90,7 @@
                 {% for store_name in pivot.stores %}
                   <th class="text-center align-middle">{{ store_name }}</th>
                 {% endfor %}
+                <th class="text-center align-middle bg-light fw-bold">Итого за день</th>
               </tr>
             </thead>
             <tbody>
@@ -101,11 +102,13 @@
                     <td class="pivot-cell">
                       {% if cell %}
                         {% if cell.all_cup > 0 or cell.mono_cup > 0 or cell.blend_cup > 0 or cell.caotina_cup > 0 %}
-                          {% if cell.caotina_cup > 0 %}<div><span class="pivot-label">CCup:</span> {{ cell.caotina_cup }}</div>{% endif %}
-                          {% if cell.mono_cup > 0 %}<div><span class="pivot-label">MCup:</span> {{ cell.mono_cup }}</div>{% endif %}
-                          {% if cell.blend_cup > 0 %}<div><span class="pivot-label">BCup:</span> {{ cell.blend_cup }}</div>{% endif %}
-                          {% set total_cups_display = cell.all_cup if cell.all_cup > 0 else (cell.mono_cup + cell.blend_cup + cell.caotina_cup) %}
-                          {% if total_cups_display > 0 %}<div><span class="pivot-label">📊:</span> {{ total_cups_display }}</div>{% endif %}
+                          <div class="cup-types-group">
+                            {% if cell.caotina_cup > 0 %}<div><span class="pivot-label">CCup:</span> <strong>{{ cell.caotina_cup }}</strong></div>{% endif %}
+                            {% if cell.mono_cup > 0 %}<div><span class="pivot-label">MCup:</span> <strong>{{ cell.mono_cup }}</strong></div>{% endif %}
+                            {% if cell.blend_cup > 0 %}<div><span class="pivot-label">BCup:</span> <strong>{{ cell.blend_cup }}</strong></div>{% endif %}
+                            {% set total_cups_display = cell.all_cup if cell.all_cup > 0 else (cell.mono_cup + cell.blend_cup + cell.caotina_cup) %}
+                            {% if total_cups_display > 0 %}<div class="mt-1"><span class="pivot-label">📊 Всего:</span> <strong>{{ total_cups_display }}</strong></div>{% endif %}
+                          </div>
                         {% else %}
                           <div><span class="pivot-label">Чашки:</span> {{ cell.cups }}</div>
                         {% endif %}
@@ -116,6 +119,26 @@
                       {% endif %}
                     </td>
                   {% endfor %}
+                  {% set daily_total = pivot.get_daily_total(current_date) %}
+                  <td class="pivot-cell bg-light fw-bold">
+                    {% if daily_total %}
+                      {% if daily_total.all_cup > 0 or daily_total.mono_cup > 0 or daily_total.blend_cup > 0 or daily_total.caotina_cup > 0 %}
+                        <div class="cup-types-group">
+                          {% if daily_total.caotina_cup > 0 %}<div><span class="pivot-label">CCup:</span> <strong>{{ daily_total.caotina_cup }}</strong></div>{% endif %}
+                          {% if daily_total.mono_cup > 0 %}<div><span class="pivot-label">MCup:</span> <strong>{{ daily_total.mono_cup }}</strong></div>{% endif %}
+                          {% if daily_total.blend_cup > 0 %}<div><span class="pivot-label">BCup:</span> <strong>{{ daily_total.blend_cup }}</strong></div>{% endif %}
+                          {% set total_cups_display = daily_total.all_cup if daily_total.all_cup > 0 else (daily_total.mono_cup + daily_total.blend_cup + daily_total.caotina_cup) %}
+                          {% if total_cups_display > 0 %}<div class="mt-1"><span class="pivot-label">📊 Всего:</span> <strong>{{ total_cups_display }}</strong></div>{% endif %}
+                        </div>
+                      {% else %}
+                        <div><span class="pivot-label">Чашки:</span> <strong>{{ daily_total.cups }}</strong></div>
+                      {% endif %}
+                      {% if daily_total.packages_kg > 0 %}<div><span class="pivot-label">📦</span> <strong>{{ '{:,.2f}'.format(daily_total.packages_kg).replace(',', ' ') }}кг</strong></div>{% endif %}
+                      <div><span class="pivot-label">💰</span> <strong>{{ '{:,.2f}'.format(daily_total.total_cash).replace(',', ' ') }} лари</strong></div>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
