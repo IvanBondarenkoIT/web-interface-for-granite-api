@@ -114,7 +114,7 @@
                           <div><span class="pivot-label">Чашки:</span> {{ cell.cups }}</div>
                         {% endif %}
                         {% if cell.packages_kg > 0 %}<div class="pivot-value-large"><span class="pivot-label-large">📦</span> {{ '{:,.2f}'.format(cell.packages_kg).replace(',', ' ') }}кг</div>{% endif %}
-                        <div class="pivot-value-large"><span class="pivot-label-large">💰</span> {{ '{:,.2f}'.format(cell.total_cash).replace(',', ' ') }} лари</div>
+                        <div class="pivot-value-large"><span class="pivot-label-large">💰</span> {{ '{:,.2f}'.format(cell.total_cash).replace(',', ' ') }} ₾</div>
                       {% else %}
                         <span class="text-muted">—</span>
                       {% endif %}
@@ -136,7 +136,7 @@
                         <div><span class="pivot-label">Чашки:</span> <strong>{{ daily_total.cups }}</strong></div>
                       {% endif %}
                       {% if daily_total.packages_kg > 0 %}<div class="pivot-value-large"><span class="pivot-label-large">📦</span> <strong>{{ '{:,.2f}'.format(daily_total.packages_kg).replace(',', ' ') }}кг</strong></div>{% endif %}
-                      <div class="pivot-value-large"><span class="pivot-label-large">💰</span> <strong>{{ '{:,.2f}'.format(daily_total.total_cash).replace(',', ' ') }} лари</strong></div>
+                      <div class="pivot-value-large"><span class="pivot-label-large">💰</span> <strong>{{ '{:,.2f}'.format(daily_total.total_cash).replace(',', ' ') }} ₾</strong></div>
                     {% else %}
                       <span class="text-muted">—</span>
                     {% endif %}
