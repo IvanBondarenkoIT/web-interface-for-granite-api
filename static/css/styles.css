@@ -48,6 +48,36 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Килограммы и суммы - крупнее шрифтом для лучшей видимости */
+.pivot-value-large {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 0.6rem;
+  color: #212529;
+  line-height: 1.5;
+}
+
+.pivot-label-large {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-right: 0.5rem;
+  color: #212529;
+  display: inline-block;
+}
+
+/* Стили для важных метрик (кг и суммы) - перекрываем общие стили */
+.pivot-value-large .pivot-label {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #212529;
+}
+
+.pivot-value-large strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #212529;
+}
+
 .cup-types-group {
   border-left: 4px solid #0d6efd;
   padding-left: 0.75rem;
@@ -73,17 +103,17 @@ body {
 
 .cup-types-group .pivot-label {
   min-width: 55px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #495057;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6c757d;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .cup-types-group strong {
   color: #0d6efd;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   min-width: 40px;
   text-align: right;
 }

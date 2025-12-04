@@ -81,11 +81,37 @@ def merge_cups_sums_packages(
         if not store_name or not order_date:
             continue
 
-        # Новые поля для типов чашек
-        mono_cup = int(row.get("MonoCup") or row.get("monoCup") or 0)
-        blend_cup = int(row.get("BlendCup") or row.get("blendCup") or 0)
-        caotina_cup = int(row.get("CaotinaCup") or row.get("caotinaCup") or 0)
-        all_cup = int(row.get("AllCup") or row.get("allCup") or row.get("ALLCUP") or row.get("allcup") or 0)
+        # Новые поля для типов чашек - пробуем все возможные варианты имен полей
+        mono_cup_raw = row.get("MonoCup") or row.get("monoCup") or row.get("MONOCUP") or row.get("mono_cup") or None
+        blend_cup_raw = row.get("BlendCup") or row.get("blendCup") or row.get("BLENDCUP") or row.get("blend_cup") or None
+        caotina_cup_raw = row.get("CaotinaCup") or row.get("caotinaCup") or row.get("CAOTINACUP") or row.get("caotina_cup") or None
+        all_cup_raw = row.get("AllCup") or row.get("allCup") or row.get("ALLCUP") or row.get("allcup") or row.get("all_cup") or None
+        
+        # Конвертируем в int, обрабатывая None, Decimal, и пустые строки
+        def safe_int(value: Any, default: int = 0) -> int:
+            if value is None:
+                return default
+            if isinstance(value, Decimal):
+                return int(value)
+            if isinstance(value, (int, float)):
+                return int(value)
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return default
+                try:
+                    return int(float(value))
+                except (ValueError, TypeError):
+                    return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+        
+        mono_cup = safe_int(mono_cup_raw, 0)
+        blend_cup = safe_int(blend_cup_raw, 0)
+        caotina_cup = safe_int(caotina_cup_raw, 0)
+        all_cup = safe_int(all_cup_raw, 0)
 
         # Для обратной совместимости: если новые поля пустые, используем старое поле
         cups = all_cup if all_cup > 0 else int(row.get("ALLCUP") or row.get("allcup") or 0)

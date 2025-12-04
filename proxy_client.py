@@ -38,10 +38,10 @@ class ProxyAPIClient:
 SELECT 
     stgp.NAME AS STORE_NAME,
     D.DAT_ AS ORDER_DATE,
-    SUM(CASE WHEN G.OWNER IN ({mono_placeholders}) THEN GD.Source ELSE NULL END) AS MonoCup,
-    SUM(CASE WHEN G.OWNER IN ({blend_placeholders}) THEN GD.Source ELSE NULL END) AS BlendCup,
-    SUM(CASE WHEN G.OWNER IN ({caotina_placeholders}) THEN GD.Source ELSE NULL END) AS CaotinaCup,
-    SUM(CASE WHEN G.OWNER IN ({all_placeholders}) THEN GD.Source ELSE NULL END) AS AllCup
+    COALESCE(SUM(CASE WHEN G.OWNER IN ({mono_placeholders}) THEN GD.Source ELSE NULL END), 0) AS MonoCup,
+    COALESCE(SUM(CASE WHEN G.OWNER IN ({blend_placeholders}) THEN GD.Source ELSE NULL END), 0) AS BlendCup,
+    COALESCE(SUM(CASE WHEN G.OWNER IN ({caotina_placeholders}) THEN GD.Source ELSE NULL END), 0) AS CaotinaCup,
+    COALESCE(SUM(CASE WHEN G.OWNER IN ({all_placeholders}) THEN GD.Source ELSE NULL END), 0) AS AllCup
 FROM STORZAKAZDT D
 JOIN STORZDTGDS GD ON D.ID = GD.SZID
 JOIN GOODS G ON GD.GODSId = G.ID
@@ -149,15 +149,25 @@ ORDER BY stgp.NAME, D.DAT_
             all_placeholders=all_placeholders,
             store_placeholders=store_placeholders,
         )
+        # Конвертируем ID групп в целые числа для Firebird
+        mono_ids = [int(gid) for gid in self.MONO_CUP_GROUPS]
+        blend_ids = [int(gid) for gid in self.BLEND_CUP_GROUPS]
+        caotina_ids = [int(gid) for gid in self.CAOTINA_CUP_GROUPS]
+        all_ids = [int(gid) for gid in self.ALL_CUP_GROUPS]
+        
         cups_params: List[Any] = (
-            list(self.MONO_CUP_GROUPS)
-            + list(self.BLEND_CUP_GROUPS)
-            + list(self.CAOTINA_CUP_GROUPS)
-            + list(self.ALL_CUP_GROUPS)
+            mono_ids
+            + blend_ids
+            + caotina_ids
+            + all_ids
             + list(store_ids)
             + [start_date, end_date]
         )
+        logger.info("Executing cups query with %d params: %s", len(cups_params), cups_params[:10])
         cups_rows = self.execute_query(cups_query, params=cups_params)
+        logger.info("Cups query returned %d rows. First row keys: %s", len(cups_rows), list(cups_rows[0].keys()) if cups_rows else "No rows")
+        if cups_rows:
+            logger.info("Sample cups row: %s", cups_rows[0])
 
         # Запрос 2: Суммы
         sums_query = self.SUMS_QUERY_TEMPLATE.format(store_placeholders=store_placeholders)
@@ -170,7 +180,9 @@ ORDER BY stgp.NAME, D.DAT_
             store_placeholders=store_placeholders,
             packages_placeholders=packages_placeholders,
         )
-        packages_params: List[Any] = list(store_ids) + [start_date, end_date] + list(self.PACKAGES_KG_GROUPS)
+        # Конвертируем ID групп в целые числа для Firebird
+        packages_ids = [int(gid) for gid in self.PACKAGES_KG_GROUPS]
+        packages_params: List[Any] = list(store_ids) + [start_date, end_date] + packages_ids
         packages_rows = self.execute_query(packages_query, params=packages_params)
 
         return {
