@@ -163,11 +163,7 @@ ORDER BY stgp.NAME, D.DAT_
             + list(store_ids)
             + [start_date, end_date]
         )
-        logger.info("Executing cups query with %d params: %s", len(cups_params), cups_params[:10])
         cups_rows = self.execute_query(cups_query, params=cups_params)
-        logger.info("Cups query returned %d rows. First row keys: %s", len(cups_rows), list(cups_rows[0].keys()) if cups_rows else "No rows")
-        if cups_rows:
-            logger.info("Sample cups row: %s", cups_rows[0])
 
         # Запрос 2: Суммы
         sums_query = self.SUMS_QUERY_TEMPLATE.format(store_placeholders=store_placeholders)

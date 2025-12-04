@@ -1,13 +1,28 @@
-.venv
+# Python
 __pycache__
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*.egg-info/
+.pytest_cache/
 *.log
-.git
-.gitignore
+
+# Environments
+.venv/
+venv/
 .env
-Dockerfile
-README.md
-env.example
+
+# Git
+.git/
+.gitignore
+
+# Documentation and plans (not needed in Docker image)
+*.md
+docs/
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
 
