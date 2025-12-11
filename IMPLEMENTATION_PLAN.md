@@ -355,3 +355,5 @@ SUM(GD.Source): 3 ✅ (2 + 1 товара)
 - **Интеграция:** `docs/qwery ubdate/FRONTEND_INTEGRATION_PROMPT.md`
 - **Быстрая справка:** `docs/qwery ubdate/FRONTEND_QUICK_REFERENCE.md`
 
+
+
