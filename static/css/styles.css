@@ -138,3 +138,27 @@ body {
   color: #0d6efd;
 }
 
+/* Стили для страницы остатков */
+.stock-table {
+  font-size: 0.95rem;
+}
+
+.stock-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.stock-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.stock-filters select[multiple] {
+  min-height: 120px;
+}
+
+.stock-filters .form-text {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+

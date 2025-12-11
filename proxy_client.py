@@ -33,6 +33,49 @@ class ProxyAPIClient:
 
     STORES_QUERY = "SELECT ID, NAME FROM STORGRP ORDER BY NAME"
 
+    # Запрос для остатков товаров
+    STOCK_QUERY_TEMPLATE = """
+SELECT 
+    GG.NAME as GROUP_NAME,
+    G.OWNER as GROUP_ID,
+    G.ID as GOOD_ID,
+    G.NAME as GOOD_NAME,
+    COALESCE(SUM(GDD.QUANT), 0) as QUANTITY,
+    COALESCE(
+        CASE 
+            WHEN SUM(GDD.QUANT) > 0 
+            THEN SUM(GDD.QUANT * GDD.PRICE) / SUM(GDD.QUANT)
+            ELSE 0
+        END,
+        0
+    ) as PRICE,
+    COALESCE(SUM(GDD.QUANT), 0) * 
+    COALESCE(
+        CASE 
+            WHEN SUM(GDD.QUANT) > 0 
+            THEN SUM(GDD.QUANT * GDD.PRICE) / SUM(GDD.QUANT)
+            ELSE 0
+        END,
+        0
+    ) as TOTAL_SUM
+FROM GOODS G
+LEFT JOIN GOODSGROUPS GG ON G.OWNER = GG.ID
+LEFT JOIN GDDKT GDD ON G.ID = GDD.GDSKEY
+    AND GDD.PRICE IS NOT NULL 
+    AND GDD.PRICE > 0
+    AND GDD.QUANT IS NOT NULL
+WHERE 1=1 {group_filter}
+GROUP BY 
+    G.ID,
+    G.NAME,
+    G.OWNER,
+    GG.NAME
+HAVING SUM(GDD.QUANT) > 0
+ORDER BY 
+    GG.NAME,
+    G.NAME
+""".strip()
+
     # Запрос 1: Чашки (с JOIN для подсчета товаров по типам)
     CUPS_QUERY_TEMPLATE = """
 SELECT 
@@ -237,6 +280,28 @@ ORDER BY stgp.NAME, D.DAT_
             return response
 
         raise last_exception or ProxyAPIAuthError("Authentication failed for all provided tokens.")
+
+    def get_stock(self, group_ids: Optional[Sequence[int]] = None) -> List[Dict[str, Any]]:
+        """
+        Получить остатки товаров.
+
+        Args:
+            group_ids: Опциональный список ID групп для фильтрации.
+                      Если None, возвращаются все товары с остатками.
+
+        Returns:
+            Список словарей с данными об остатках.
+        """
+        if group_ids:
+            group_placeholders = ", ".join(["?"] * len(group_ids))
+            group_filter = f"AND G.OWNER IN ({group_placeholders})"
+            query = self.STOCK_QUERY_TEMPLATE.format(group_filter=group_filter)
+            params: List[Any] = list(group_ids)
+        else:
+            query = self.STOCK_QUERY_TEMPLATE.format(group_filter="")
+            params = None
+
+        return self.execute_query(query, params=params)
 
     @staticmethod
     def _headers(token: str) -> Dict[str, str]:

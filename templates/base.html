@@ -22,6 +22,9 @@
             <li class="nav-item">
               <a class="nav-link{% if request.endpoint == 'sales' %} active{% endif %}" href="{{ url_for('sales') }}">Продажи</a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link{% if request.endpoint == 'stock' %} active{% endif %}" href="{{ url_for('stock') }}">Остатки</a>
+            </li>
           </ul>
         </div>
       </div>

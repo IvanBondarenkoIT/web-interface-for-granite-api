@@ -14,6 +14,14 @@ from services.analytics import (
     sort_records,
     summarize_sales,
 )
+from services.stock import (
+    calculate_stock_summary,
+    filter_stock_by_groups,
+    get_unique_groups,
+    paginate_stock,
+    parse_stock_data,
+    search_stock,
+)
 
 
 def create_app() -> Flask:
@@ -119,6 +127,90 @@ def create_app() -> Flask:
             pivot=pivot_table,
         )
 
+    @app.route("/stock")
+    def stock() -> str:
+        """Страница остатков товаров."""
+        load_requested = request.args.get("load") == "1"
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 50))
+        search_query = request.args.get("search", "").strip()
+        selected_group_ids = _parse_group_ids(request.args.getlist("group"))
+
+        groups: List[Dict[str, Any]] = []
+        summary = None
+        summary_dict = None
+        paginated_records_dict = []
+        total_pages = 0
+
+        if load_requested:
+            try:
+                # Получаем остатки с фильтрацией по группам на уровне SQL
+                raw_stock = client.get_stock(group_ids=selected_group_ids if selected_group_ids else None)
+                stock_records_list = parse_stock_data(raw_stock)
+
+                # Получаем список уникальных групп для фильтра
+                groups = get_unique_groups(stock_records_list)
+
+                # Поиск на уровне приложения (клиентская фильтрация)
+                if search_query:
+                    stock_records_list = search_stock(stock_records_list, search_query)
+
+                # Пагинация
+                paginated_records, total_pages = paginate_stock(stock_records_list, page, per_page)
+
+                # Преобразуем StockRecord в словари для шаблона (Decimal -> float)
+                paginated_records_dict = [
+                    {
+                        "group_name": r.group_name,
+                        "group_id": r.group_id,
+                        "good_id": r.good_id,
+                        "good_name": r.good_name,
+                        "quantity": float(r.quantity),
+                        "price": float(r.price),
+                        "total_sum": float(r.total_sum),
+                    }
+                    for r in paginated_records
+                ]
+
+                # Итоговая информация (по всем записям, не только текущей странице)
+                summary = calculate_stock_summary(stock_records_list)
+
+                # Преобразуем Decimal в float для шаблона
+                summary_dict = {
+                    "total_items": summary.total_items,
+                    "total_quantity": float(summary.total_quantity),
+                    "total_sum": float(summary.total_sum),
+                    "groups_count": summary.groups_count,
+                }
+            except ProxyAPIError as exc:
+                flash(f"Ошибка при загрузке остатков: {exc}", "danger")
+                summary_dict = None
+        else:
+            # Пытаемся загрузить список групп для фильтра (без загрузки всех остатков)
+            try:
+                # Получаем все остатки только для списка групп (можно оптимизировать отдельным запросом)
+                raw_stock = client.get_stock()
+                stock_records_list = parse_stock_data(raw_stock)
+                groups = get_unique_groups(stock_records_list)
+            except ProxyAPIError:
+                groups = []
+            summary_dict = None
+
+        return render_template(
+            "stock_table.html",
+            stock_records=paginated_records_dict,
+            summary=summary_dict,
+            groups=groups,
+            filters={
+                "group_ids": selected_group_ids,
+                "search": search_query,
+                "page": page,
+                "per_page": per_page,
+            },
+            loaded=load_requested,
+            total_pages=total_pages,
+        )
+
     @app.errorhandler(404)
     def page_not_found(_: Exception) -> str:
         return render_template("404.html"), 404
@@ -144,6 +236,17 @@ def _parse_store_ids(store_values: Sequence[str]) -> List[int]:
         except (TypeError, ValueError):
             continue
     return store_ids
+
+
+def _parse_group_ids(group_values: Sequence[str]) -> List[int]:
+    """Парсинг ID групп из параметров запроса."""
+    group_ids: List[int] = []
+    for value in group_values:
+        try:
+            group_ids.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return group_ids
 
 
 app = create_app()

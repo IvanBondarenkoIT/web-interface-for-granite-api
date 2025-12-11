@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Остатки товаров</h1>
+      <p class="text-muted mb-0">Загрузите данные для просмотра остатков на складе.</p>
+    </div>
+    <div class="mt-3 mt-md-0">
+      <a href="{{ url_for('stock', load=1) }}" class="btn btn-primary">
+        Загрузить остатки
+      </a>
+    </div>
+  </div>
+
+  {% if loaded %}
+    <div class="card mb-4 shadow-sm">
+      <div class="card-body">
+        <form class="row g-3 align-items-end" method="get" action="{{ url_for('stock') }}">
+          <input type="hidden" name="load" value="1">
+          <div class="col-12 col-md-4">
+            <label for="group" class="form-label">Группа товаров</label>
+            <select class="form-select" id="group" name="group" multiple size="5">
+              {% for group in groups %}
+                <option value="{{ group.id }}" {% if group.id in filters.group_ids %}selected{% endif %}>
+                  {{ group.name }}
+                </option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">Выберите одну или несколько групп (Ctrl+Click для множественного выбора)</small>
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="search" class="form-label">Поиск</label>
+            <input type="text" class="form-control" id="search" name="search" 
+                   value="{{ filters.search }}" placeholder="Поиск по названию группы или товара">
+          </div>
+          <div class="col-12 col-md-2">
+            <label for="per_page" class="form-label">На странице</label>
+            <select class="form-select" id="per_page" name="per_page">
+              <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
+              <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
+              <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
+              <option value="200" {% if filters.per_page == 200 %}selected{% endif %}>200</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">Применить</button>
+            </div>
+          </div>
+          <div class="col-12">
+            <a class="btn btn-outline-secondary" href="{{ url_for('stock', load=1) }}">Сбросить фильтры</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if summary %}
+      <div class="row mb-4 g-3">
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <span class="metric-label">Товаров</span>
+            <span class="metric-value">{{ '{:,}'.format(summary.total_items or 0).replace(',', ' ') }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <span class="metric-label">Групп</span>
+            <span class="metric-value">{{ summary.groups_count or 0 }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <span class="metric-label">Общее количество</span>
+            <span class="metric-value">{{ '{:,.2f}'.format(summary.total_quantity or 0).replace(',', ' ') }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <span class="metric-label">Общая сумма, ₾</span>
+            <span class="metric-value">{{ '{:,.2f}'.format(summary.total_sum or 0).replace(',', ' ') }}</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if stock_records %}
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped" id="stockTable">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">Группа</th>
+                  <th scope="col">Товар</th>
+                  <th scope="col" class="text-end">Количество</th>
+                  <th scope="col" class="text-end">Цена, ₾</th>
+                  <th scope="col" class="text-end">Сумма, ₾</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for record in stock_records %}
+                  <tr>
+                    <td>{{ record.group_name }}</td>
+                    <td>{{ record.good_name }}</td>
+                    <td class="text-end">{{ '{:,.2f}'.format(record.quantity).replace(',', ' ') }}</td>
+                    <td class="text-end">{{ '{:,.2f}'.format(record.price).replace(',', ' ') }}</td>
+                    <td class="text-end"><strong>{{ '{:,.2f}'.format(record.total_sum).replace(',', ' ') }}</strong></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+              {% if summary %}
+                <tfoot class="table-secondary">
+                  <tr>
+                    <th colspan="2">Итого:</th>
+                    <th class="text-end">{{ '{:,.2f}'.format(summary.total_quantity).replace(',', ' ') }}</th>
+                    <th class="text-end">—</th>
+                    <th class="text-end"><strong>{{ '{:,.2f}'.format(summary.total_sum).replace(',', ' ') }}</strong></th>
+                  </tr>
+                </tfoot>
+              {% endif %}
+            </table>
+          </div>
+
+          {% if total_pages > 1 %}
+            <nav aria-label="Пагинация остатков">
+              <ul class="pagination justify-content-center mt-4">
+                {% if filters.page > 1 %}
+                  <li class="page-item">
+                    <a class="page-link" href="{{ url_for('stock', load=1, page=filters.page-1, per_page=filters.per_page, search=filters.search) }}{% for gid in filters.group_ids %}&group={{ gid }}{% endfor %}">
+                      Предыдущая
+                    </a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Предыдущая</span>
+                  </li>
+                {% endif %}
+
+                {% for page_num in range(1, total_pages + 1) %}
+                  {% if page_num == filters.page %}
+                    <li class="page-item active">
+                      <span class="page-link">{{ page_num }}</span>
+                    </li>
+                  {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= filters.page - 1 and page_num <= filters.page + 1) %}
+                    <li class="page-item">
+                      <a class="page-link" href="{{ url_for('stock', load=1, page=page_num, per_page=filters.per_page, search=filters.search) }}{% for gid in filters.group_ids %}&group={{ gid }}{% endfor %}">
+                        {{ page_num }}
+                      </a>
+                    </li>
+                  {% elif page_num == 4 or page_num == total_pages - 3 %}
+                    <li class="page-item disabled">
+                      <span class="page-link">...</span>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+
+                {% if filters.page < total_pages %}
+                  <li class="page-item">
+                    <a class="page-link" href="{{ url_for('stock', load=1, page=filters.page+1, per_page=filters.per_page, search=filters.search) }}{% for gid in filters.group_ids %}&group={{ gid }}{% endfor %}">
+                      Следующая
+                    </a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">Следующая</span>
+                  </li>
+                {% endif %}
+              </ul>
+              <p class="text-center text-muted mt-2">
+                Страница {{ filters.page }} из {{ total_pages }}
+              </p>
+            </nav>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        <h5 class="alert-heading">Нет данных</h5>
+        <p>Остатки не найдены по заданным критериям.</p>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-secondary" role="alert">
+      <h5 class="alert-heading">Данные не загружены</h5>
+      <p>Нажмите кнопку "Загрузить остатки" для получения актуальных данных об остатках товаров на складе.</p>
+    </div>
+  {% endif %}
+{% endblock %}
+
